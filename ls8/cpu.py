@@ -7,7 +7,22 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
-        pass
+        self.ram = [0] * 256
+        self.reg = [0] * 8
+        self.pc = 0
+        self.fl = 0
+        ## Instructions ##
+        self.HLT = 0b00000001 ## 'Halt', stop running
+        self.LDI = 0b10000010 ## 'Loading Data', store value in register
+        self.PRN = 0b01000111 ## 'Print', prints value in a register
+        
+    def ram_read(self, index):
+        """Returns the value stored at an index in RAM"""
+        return self.ram[index]
+    
+    def ram_write(self, value, index):
+        """Writes a value to an index in RAM"""
+        self.ram[index] = value
 
     def load(self):
         """Load a program into memory."""
@@ -62,4 +77,33 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        pass
+        running = True
+        # enter a loop
+        while running:
+            # read memory address at program counter (pc)
+            # store that into instruction register (ir)
+            ir = self.ram_read(self.pc)
+        
+            # read the following 2 bytes of memory. Store as vars for operands
+            operand_a = self.ram_read(self.pc + 1)
+            operand_b = self.ram_read(self.pc + 2)
+        
+            # check if the ir matches any cases
+            if ir == self.HLT:
+                running = False
+                continue
+            elif ir == self.LDI:
+                # get register index from pc+1
+                reg_index = self.ram[self.pc + 1]
+                # get value from pc+2
+                load = self.ram[self.pc + 2]
+                # store value in register
+                self.reg[reg_index] = load
+                self.pc += 2
+            elif ir == self.PRN:
+                reg_index = self.ram[self.pc + 1]
+                print(self.reg[reg_index])
+                self.pc += 1
+            
+            self.pc += 1
+        
