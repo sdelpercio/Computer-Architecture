@@ -7,14 +7,42 @@ class CPU:
 
     def __init__(self):
         """Construct a new CPU."""
+        self.running = True
         self.ram = [0] * 256
         self.reg = [0] * 8
+        self.reg[7] = 0xF4
         self.pc = 0
+        self.ir = 0
         self.fl = 0
-        ## Instructions ##
-        self.HLT = 0b00000001 ## 'Halt', stop running
-        self.LDI = 0b10000010 ## 'Loading Data', store value in register
-        self.PRN = 0b01000111 ## 'Print', prints value in a register
+        
+        self.branchtable = {}
+        self.branchtable[0b00000001] = self.HLT ## 'Halt', stop running
+        self.branchtable[0b10000010] = self.LDI ## 'Loading Data', store value in register              
+        self.branchtable[0b01000111] = self.PRN ## 'Print', prints value in a register
+        self.branchtable[0b10100010] = self.MUL ## 'Multiply', multiplies two values in registers
+        
+    ## Instructions ##
+    def HLT(self):
+        self.running = False
+    def LDI(self):
+        # get register index from pc+1
+        reg_index = self.ram[self.pc + 1]
+        # get value from pc+2
+        load = self.ram[self.pc + 2]
+        # store value in register
+        self.reg[reg_index] = load
+        self.pc += 1 + (self.ir >> 6)
+    def PRN(self):
+        reg_index = self.ram[self.pc + 1]
+        print(self.reg[reg_index])
+        self.pc += 1 + (self.ir >> 6)
+    def MUL(self):
+        # read the following 2 bytes of memory. Store as vars for operands
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        # call alu
+        self.alu('MUL', operand_a, operand_b)
+        self.pc += 1 + (self.ir >> 6)
         
     def ram_read(self, index):
         """Returns the value stored at an index in RAM"""
@@ -28,18 +56,26 @@ class CPU:
         """Load a program into memory."""
 
         address = 0
-
-        # For now, we've just hardcoded a program:
-
-        program = [
-            # From print8.ls8
-            0b10000010, # LDI R0,8
-            0b00000000,
-            0b00001000,
-            0b01000111, # PRN R0
-            0b00000000,
-            0b00000001, # HLT
-        ]
+        program = []
+        
+        # check for program to run and filename
+        if len(sys.argv) < 2:
+            print("Please pass in a second filename: python3 ./ls8/ls8.py second_filename.py")
+            sys.exit()
+            
+        filename = sys.argv[1]
+        # read file, get instructions, append to program
+        try:
+            with open(f'ls8/examples/{filename}') as f:
+                for line in f:
+                    split_line = line.split('#')[0]
+                    command = split_line.strip()
+                    if command == '':
+                        continue
+                    program.append(int(command, 2))
+        except FileNotFoundError:
+            print(f'{sys.argv[0]}: {sys.argv[1]} file was not found')
+            sys.exit()
 
         for instruction in program:
             self.ram[address] = instruction
@@ -51,7 +87,8 @@ class CPU:
 
         if op == "ADD":
             self.reg[reg_a] += self.reg[reg_b]
-        #elif op == "SUB": etc
+        elif op == "MUL":
+            self.reg[reg_a] *= self.reg[reg_b]
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -77,33 +114,16 @@ class CPU:
 
     def run(self):
         """Run the CPU."""
-        running = True
         # enter a loop
-        while running:
+        while self.running:
             # read memory address at program counter (pc)
             # store that into instruction register (ir)
-            ir = self.ram_read(self.pc)
-        
-            # read the following 2 bytes of memory. Store as vars for operands
-            operand_a = self.ram_read(self.pc + 1)
-            operand_b = self.ram_read(self.pc + 2)
+            self.ir = self.ram_read(self.pc)
         
             # check if the ir matches any cases
-            if ir == self.HLT:
-                running = False
-                continue
-            elif ir == self.LDI:
-                # get register index from pc+1
-                reg_index = self.ram[self.pc + 1]
-                # get value from pc+2
-                load = self.ram[self.pc + 2]
-                # store value in register
-                self.reg[reg_index] = load
-                self.pc += 2
-            elif ir == self.PRN:
-                reg_index = self.ram[self.pc + 1]
-                print(self.reg[reg_index])
-                self.pc += 1
-            
-            self.pc += 1
+            try:
+                self.branchtable[self.ir]()
+            except KeyError:
+                print('LS8 does not support this operation')
+                sys.exit()
         
