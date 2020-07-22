@@ -16,33 +16,45 @@ class CPU:
         self.fl = 0
         
         self.branchtable = {}
-        self.branchtable[0b00000001] = self.HLT ## 'Halt', stop running
-        self.branchtable[0b10000010] = self.LDI ## 'Loading Data', store value in register              
-        self.branchtable[0b01000111] = self.PRN ## 'Print', prints value in a register
-        self.branchtable[0b10100010] = self.MUL ## 'Multiply', multiplies two values in registers
+        self.branchtable[0b00000001] = self.HLT 
+        self.branchtable[0b10000010] = self.LDI              
+        self.branchtable[0b01000111] = self.PRN 
+        self.branchtable[0b10100010] = self.MUL 
+        self.branchtable[0b01000101] = self.PUSH 
+        self.branchtable[0b01000110] = self.POP
         
     ## Instructions ##
-    def HLT(self):
+    def HLT(self): ## 'Halt', stop running
         self.running = False
-    def LDI(self):
-        # get register index from pc+1
+    def LDI(self): ## 'Loading Data', store value in register 
         reg_index = self.ram[self.pc + 1]
-        # get value from pc+2
         load = self.ram[self.pc + 2]
-        # store value in register
         self.reg[reg_index] = load
         self.pc += 1 + (self.ir >> 6)
-    def PRN(self):
+    def PRN(self): ## 'Print', prints value in a register
         reg_index = self.ram[self.pc + 1]
         print(self.reg[reg_index])
         self.pc += 1 + (self.ir >> 6)
-    def MUL(self):
-        # read the following 2 bytes of memory. Store as vars for operands
+    def MUL(self): ## 'Multiply', multiplies two values in registers
         operand_a = self.ram_read(self.pc + 1)
         operand_b = self.ram_read(self.pc + 2)
-        # call alu
         self.alu('MUL', operand_a, operand_b)
         self.pc += 1 + (self.ir >> 6)
+    def PUSH(self): ## 'Push', copies value from register and pushes onto stack
+        self.reg[7] -= 1
+        sp = self.reg[7]
+        reg_index = self.ram[self.pc + 1]
+        value = self.reg[reg_index]
+        self.ram[sp] = value
+        self.pc += 1 + (self.ir >> 6)
+    def POP(self): ## 'Pop', copies the value at top of stack into a given register
+        sp = self.reg[7]
+        value = self.ram[sp]
+        reg_index = self.ram[self.pc + 1]
+        self.reg[reg_index] = value
+        self.reg[7] += 1
+        self.pc += 1 + (self.ir >> 6)
+        
         
     def ram_read(self, index):
         """Returns the value stored at an index in RAM"""
