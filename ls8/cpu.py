@@ -18,10 +18,13 @@ class CPU:
         self.branchtable = {}
         self.branchtable[0b00000001] = self.HLT 
         self.branchtable[0b10000010] = self.LDI              
-        self.branchtable[0b01000111] = self.PRN 
+        self.branchtable[0b01000111] = self.PRN
+        self.branchtable[0b10100000] = self.ADD
         self.branchtable[0b10100010] = self.MUL 
         self.branchtable[0b01000101] = self.PUSH 
         self.branchtable[0b01000110] = self.POP
+        self.branchtable[0b01010000] = self.CALL
+        self.branchtable[0b00010001] = self.RET
         
     ## Instructions ##
     def HLT(self): ## 'Halt', stop running
@@ -34,6 +37,11 @@ class CPU:
     def PRN(self): ## 'Print', prints value in a register
         reg_index = self.ram[self.pc + 1]
         print(self.reg[reg_index])
+        self.pc += 1 + (self.ir >> 6)
+    def ADD(self): ## 'Add', adds two values in registers
+        operand_a = self.ram_read(self.pc + 1)
+        operand_b = self.ram_read(self.pc + 2)
+        self.alu('ADD', operand_a, operand_b)
         self.pc += 1 + (self.ir >> 6)
     def MUL(self): ## 'Multiply', multiplies two values in registers
         operand_a = self.ram_read(self.pc + 1)
@@ -54,6 +62,23 @@ class CPU:
         self.reg[reg_index] = value
         self.reg[7] += 1
         self.pc += 1 + (self.ir >> 6)
+    def CALL(self): ## 'Call', moves the pc to an address in ram to call a function
+        reg_index = self.ram[self.pc + 1]
+        address = self.reg[reg_index]
+        return_address = self.pc + 2
+        # push return address onto stack
+        self.reg[7] -= 1
+        sp = self.reg[7]
+        self.ram[sp] = return_address
+        # set pc to called func
+        self.pc = address
+    def RET(self): ## 'Return', moves program counter back after finishing subroutine
+        # pop return address
+        sp = self.reg[7]
+        return_address = self.ram[sp]
+        self.reg[7] += 1
+        # set pc
+        self.pc = return_address
         
         
     def ram_read(self, index):
@@ -137,5 +162,6 @@ class CPU:
                 self.branchtable[self.ir]()
             except KeyError:
                 print('LS8 does not support this operation')
+                print(f'ir = {self.ir}')
                 sys.exit()
         
