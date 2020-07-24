@@ -13,7 +13,7 @@ class CPU:
         self.reg[7] = 0xF4
         self.pc = 0
         self.ir = 0
-        self.fl = 0
+        self.fl = 0b00000000
         
         self.branchtable = {}
         self.branchtable[0b00000001] = self.HLT 
@@ -25,6 +25,8 @@ class CPU:
         self.branchtable[0b01000110] = self.POP
         self.branchtable[0b01010000] = self.CALL
         self.branchtable[0b00010001] = self.RET
+        self.branchtable[0b10100111] = self.CMP
+        self.branchtable[0b01010100] = self.JMP
         
     ## Instructions ##
     def HLT(self): ## 'Halt', stop running
@@ -79,7 +81,15 @@ class CPU:
         self.reg[7] += 1
         # set pc
         self.pc = return_address
-        
+    def CMP(self): ## 'Compare', Compares values in two registers
+        reg_A = self.ram[self.pc + 1]
+        reg_B = self.ram[self.pc + 2]
+        self.alu('CMP', reg_A, reg_B)
+        self.pc += 1 + (self.ir >> 6)
+    def JMP(self): ## 'Jump', set the pc to an address stored in a register
+        reg_index = self.ram[self.pc + 1]
+        next_index = self.reg[reg_index]
+        self.pc = next_index
         
     def ram_read(self, index):
         """Returns the value stored at an index in RAM"""
@@ -126,6 +136,13 @@ class CPU:
             self.reg[reg_a] += self.reg[reg_b]
         elif op == "MUL":
             self.reg[reg_a] *= self.reg[reg_b]
+        elif op == "CMP":
+            if self.reg[reg_a] > self.reg[reg_b]:
+                self.fl = 0b00000010
+            elif self.reg[reg_a] < self.reg[reg_b]:
+                self.fl = 0b00000100
+            else:
+                self.fl = 0b00000001
         else:
             raise Exception("Unsupported ALU operation")
 
