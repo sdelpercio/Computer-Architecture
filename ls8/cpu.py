@@ -28,6 +28,7 @@ class CPU:
         self.branchtable[0b10100111] = self.CMP
         self.branchtable[0b01010100] = self.JMP
         self.branchtable[0b01010101] = self.JEQ
+        self.branchtable[0b01010110] = self.JNE
         
     ## Instructions ##
     def HLT(self): ## 'Halt', stop running
@@ -98,6 +99,15 @@ class CPU:
             self.pc = next_index
         else:
             self.pc += 1 + (self.ir >> 6)
+    def JNE(self): ## 'Jump if not equal'
+        if (self.fl & 0b00000001) == 0:
+            reg_index = self.ram[self.pc + 1]
+            next_index = self.reg[reg_index]
+            self.pc = next_index
+        else:
+            self.pc += 1 + (self.ir >> 6)
+            
+            
         
     def ram_read(self, index):
         """Returns the value stored at an index in RAM"""
